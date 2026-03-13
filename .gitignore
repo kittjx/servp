@@ -1,5 +1,6 @@
 db_data/
 .DS_Store
+nginx/ssl/
 
 
 # Byte-compiled / optimized / DLL files
