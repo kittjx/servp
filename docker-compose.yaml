@@ -22,12 +22,14 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    environment:
+      - PYTHONPATH=/app
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./server:/app/server
-    command: sh -c "cd server && ./scripts/init_db.sh"
+    command: sh -c "/app/server/scripts/init_db.sh"
 
   server:
     build:
@@ -35,12 +37,13 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    environment:
+      - PYTHONPATH=/app
     ports:
       - "8000:8000"
     depends_on:
       db-init:
         condition: service_completed_successfully
-
     volumes:
       - ./server:/app/server
 

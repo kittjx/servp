@@ -12,7 +12,8 @@ from sqlmodel import SQLModel
 import os
 import asyncio
 
-from models.order import User, WorkOrder, ProcessRecord
+from server.models.order import WorkOrder, ProcessRecord
+from server.models.user import User
 
 
 # this is the Alembic Config object, which provides

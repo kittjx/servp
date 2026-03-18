@@ -28,23 +28,6 @@ class DispatchMethod(str, enum.Enum):
     AUTO = "auto"
     MANUAL = "manual"
 
-class User(SQLModel, table=True):
-    __tablename__ = "users"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    role: UserRole
-    department_id: int
-    openid: Optional[str] = None
-    phone_number: Optional[str] = None
-    status: str = "active"
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-
-    work_orders: List["WorkOrder"] = Relationship(back_populates="reporter")
-    handled_orders: List["WorkOrder"] = Relationship(back_populates="handler")
-    process_records: List["ProcessRecord"] = Relationship(back_populates="user")
-
 class WorkOrder(SQLModel, table=True):
     __tablename__ = "work_orders"
 

@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+cd /app/server
+
 echo "Checking for existing migrations..."
 MIGRATION_COUNT=$(ls -1 alembic/versions/*.py 2>/dev/null | wc -l)
 
