@@ -4,6 +4,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ...db.database import DBSession
 from ...models.order import Order, OrderStatus, OrderPriority, ProcessRecord, DispatchMethod
+from ...models.user import User
+from ...api.v1.auth import CurrentUser
 
 from typing import List, Optional
 from datetime import datetime
@@ -17,7 +19,6 @@ def generate_order_id():
     return f"{date_str}-{random_str}"
 
 class OrderCreate(SQLModel):
-    reporter_id: int
     description: str
     media_urls: Optional[List[str]] = None
     priority: OrderPriority
@@ -25,7 +26,6 @@ class OrderCreate(SQLModel):
 
 class AcceptOrderRequest(SQLModel):
     order_id: int
-    user_id: int
 
 class ProcessOrderRequest(SQLModel):
     order_id: int
@@ -55,10 +55,10 @@ async def get_order_or_404(order_id: int, session: AsyncSession) -> Order:
     return order
 
 @order_router.post("/create", response_model=Order, status_code=status.HTTP_201_CREATED)
-async def create_order(order: OrderCreate, session: DBSession):
+async def create_order(order: OrderCreate, current_user: CurrentUser, session: DBSession):
     new_order = Order(
         order_id=generate_order_id(),
-        reporter_id=order.reporter_id,
+        reporter_id=current_user.id,  # Use current user's ID
         description=order.description,
         media_urls=order.media_urls,
         priority=order.priority,
@@ -70,12 +70,12 @@ async def create_order(order: OrderCreate, session: DBSession):
     return new_order
 
 @order_router.post("/accept", response_model=Order)
-async def accept_order(request: AcceptOrderRequest, session: DBSession):
+async def accept_order(request: AcceptOrderRequest, current_user: CurrentUser, session: DBSession):
     order = await get_order_or_404(request.order_id, session)
-    order.handler_id = request.user_id
+    order.handler_id = current_user.id
     order.status = OrderStatus.PROCESSING
     order.updated_at = datetime.utcnow()
-    
+
     session.add(order)
     await session.commit()
     await session.refresh(order)
@@ -83,25 +83,35 @@ async def accept_order(request: AcceptOrderRequest, session: DBSession):
 
 @order_router.get("/list", response_model=List[Order])
 async def list_orders(
+    current_user: CurrentUser,
     session: DBSession,
     status: Optional[OrderStatus] = None,
     skip: int = 0,
-    limit: int = 100    
+    limit: int = 100
 ):
-    statement = select(Order)
+    # Get orders where user is either reporter or handler
+    statement = select(Order).where(
+        (Order.reporter_id == current_user.id) | (Order.handler_id == current_user.id)
+    )
     if status:
         statement = statement.where(Order.status == status)
-    
+
     result = await session.exec(statement.offset(skip).limit(limit))
     orders = result.all()
     return orders
 
 @order_router.post("/process", response_model=Order)
-async def process_order(request: ProcessOrderRequest, session: DBSession):
+async def process_order(request: ProcessOrderRequest, current_user: CurrentUser, session: DBSession):
     order = await get_order_or_404(request.order_id, session)
+    # Verify that current user is the handler
+    if order.handler_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to process this order"
+        )
     order.status = OrderStatus.WAITING_FOR_ACCEPTANCE
     order.updated_at = datetime.utcnow()
-    
+
     session.add(order)
     await session.commit()
     await session.refresh(order)
@@ -113,14 +123,20 @@ async def get_process_records(orderId: int, session: DBSession):
     return order.records
 
 @order_router.post("/confirm", response_model=Order)
-async def confirm_order(request: ConfirmOrderRequest, session: DBSession):
+async def confirm_order(request: ConfirmOrderRequest, current_user: CurrentUser, session: DBSession):
     order = await get_order_or_404(request.order_id, session)
+    # Verify that current user is the reporter
+    if order.reporter_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to confirm this order"
+        )
     order.status = OrderStatus.COMPLETED
     order.completed_at = datetime.utcnow()
     order.updated_at = datetime.utcnow()
     if request.satisfaction_score is not None:
         order.satisfaction_score = request.satisfaction_score
-    
+
     session.add(order)
     await session.commit()
     await session.refresh(order)
@@ -148,12 +164,14 @@ async def create_process_record(record: ProcessRecordCreate, session: DBSession)
 
 
 @order_router.patch("/reassign", response_model=Order)
-async def reassign_order(request: ReassignOrderRequest, session: DBSession):
+async def reassign_order(request: ReassignOrderRequest, current_user: CurrentUser, session: DBSession):
     order = await get_order_or_404(request.order_id, session)
+    # Only allow reassigning if you are the current handler or an admin/dispatcher
+    # For now, we'll allow any authenticated user
     order.handler_id = request.new_handler_id
     order.dispatch_method = DispatchMethod.MANUAL
     order.updated_at = datetime.utcnow()
-    
+
     session.add(order)
     await session.commit()
     await session.refresh(order)

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from ...db.database import DBSession
 from ...models.user import User, WeChatLoginRequest, UserLoginResponse
-from typing import Optional
+from typing import Optional, Annotated
 import httpx
 from datetime import timedelta, datetime
 from jose import JWTError, jwt
@@ -20,6 +20,86 @@ WECHAT_APP_SECRET = os.getenv("WECHAT_APP_SECRET", "")
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 * 24 * 60  # 30 days
+
+
+# JWT Token data model
+from pydantic import BaseModel
+class TokenData(BaseModel):
+    user_id: int
+    openid: str
+
+
+async def extract_token(request: Request) -> str:
+    """Extract JWT token from request header"""
+    authorization = request.headers.get("Authorization")
+
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format. Use: Bearer <token>",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = authorization[len("Bearer "):]
+    return token
+
+
+async def get_current_user_from_token(token: str, session: AsyncSession) -> User:
+    """Get current user from JWT token and verify user exists in database"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id_str: str = payload.get("sub")
+        openid: str = payload.get("openid")
+
+        if user_id_str is None or openid is None:
+            raise credentials_exception
+
+        user_id = int(user_id_str)
+    except (JWTError, ValueError):
+        raise credentials_exception
+
+    # Check if user exists in database
+    statement = select(User).where(User.id == user_id)
+    result = await session.exec(statement)
+    user = result.one_or_none()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found in database. Please login again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Verify openid matches (extra security check)
+    if user.openid != openid:
+        raise credentials_exception
+
+    return user
+
+
+async def get_current_user(
+    token: Annotated[str, Depends(extract_token)],
+    session: DBSession
+) -> User:
+    """Dependency to get current user from Authorization header"""
+    return await get_current_user_from_token(token, session)
+
+
+# Type alias for using in other modules
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -125,16 +205,8 @@ async def wechat_login(request: WeChatLoginRequest, session: DBSession):
 
 
 @auth_router.get("/me", response_model=User)
-async def get_current_user(user_id: int, session: DBSession):
+async def get_current_user_endpoint(
+    current_user: CurrentUser
+):
     """Get current user info"""
-    statement = select(User).where(User.id == user_id)
-    result = await session.exec(statement)
-    user = result.one_or_none()
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    return user
+    return current_user
