@@ -28,7 +28,7 @@ logs:
 # Clean up
 clean:
 	docker compose down -v
-	rm -rf db_data
+	rm -rf db_data uploads
 
 # Start services
 up:

@@ -28,8 +28,8 @@ class DispatchMethod(str, enum.Enum):
     AUTO = "auto"
     MANUAL = "manual"
 
-class WorkOrder(SQLModel, table=True):
-    __tablename__ = "work_orders"
+class Order(SQLModel, table=True):
+    __tablename__ = "orders"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     order_id: str = Field(unique=True, index=True)
@@ -47,25 +47,25 @@ class WorkOrder(SQLModel, table=True):
     completed_at: Optional[datetime] = None
 
     reporter: "User" = Relationship(
-        back_populates="work_orders",
-        sa_relationship_kwargs={"foreign_keys": "[WorkOrder.reporter_id]"}
+        back_populates="orders",
+        sa_relationship_kwargs={"foreign_keys": "[Order.reporter_id]"}
     )
     handler: Optional["User"] = Relationship(
         back_populates="handled_orders",
-        sa_relationship_kwargs={"foreign_keys": "[WorkOrder.handler_id]"}
+        sa_relationship_kwargs={"foreign_keys": "[Order.handler_id]"}
     )
-    records: List["ProcessRecord"] = Relationship(back_populates="work_order")
+    records: List["ProcessRecord"] = Relationship(back_populates="order")
 
 class ProcessRecord(SQLModel, table=True):
     __tablename__ = "process_records"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    work_order_id: int = Field(foreign_key="work_orders.id")
+    order_id: int = Field(foreign_key="orders.id")
     user_id: int = Field(foreign_key="users.id")
     action: str
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
-    work_order: "WorkOrder" = Relationship(back_populates="records")
+    order: "Order" = Relationship(back_populates="records")
     user: "User" = Relationship(back_populates="process_records")
 

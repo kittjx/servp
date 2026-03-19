@@ -4,7 +4,7 @@ from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy import String
 
 if TYPE_CHECKING:
-    from .order import WorkOrder, ProcessRecord
+    from .order import Order, ProcessRecord
 
 
 class User(SQLModel, table=True):
@@ -25,13 +25,13 @@ class User(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    work_orders: List["WorkOrder"] = Relationship(
+    orders: List["Order"] = Relationship(
         back_populates="reporter",
-        sa_relationship_kwargs={"foreign_keys": "[WorkOrder.reporter_id]"}
+        sa_relationship_kwargs={"foreign_keys": "[Order.reporter_id]"}
     )
-    handled_orders: List["WorkOrder"] = Relationship(
+    handled_orders: List["Order"] = Relationship(
         back_populates="handler",
-        sa_relationship_kwargs={"foreign_keys": "[WorkOrder.handler_id]"}
+        sa_relationship_kwargs={"foreign_keys": "[Order.handler_id]"}
     )
     process_records: List["ProcessRecord"] = Relationship(back_populates="user")
 
