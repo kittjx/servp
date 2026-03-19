@@ -36,13 +36,14 @@
 </template>
 
 <script>
+	import api from '../../utils/api.js'
+
 	export default {
 		data() {
 			return {
 				title: 'Hospital Service',
 				loading: false,
 				showProfileForm: false,
-				apiBaseUrl: 'http://localhost:8000', // 修改为你的后端API地址
 				userInfo: {
 					nickname: '',
 					avatarUrl: ''
@@ -112,23 +113,16 @@
 
 					console.log('Submitting user info:', userInfoToSubmit);
 
-					// 发送到后端
-					const response = await uni.request({
-						url: `${this.apiBaseUrl}/api/v1/auth/wechat-login`,
-						method: 'POST',
-						data: {
-							code: this.loginCode,
-							user_info: userInfoToSubmit
-						},
-						header: {
-							'Content-Type': 'application/json'
-						}
+					// 发送到后端（使用 public 方法，因为登录不需要认证）
+					const response = await api.public('/api/v1/auth/wechat-login', {
+						code: this.loginCode,
+						user_info: userInfoToSubmit
 					});
 
 					console.log('Login response:', response);
 
-					if (response.statusCode === 200 && response.data) {
-						const { access_token, user } = response.data;
+					if (response && response.access_token && response.user) {
+						const { access_token, user } = response;
 
 						// 保存token和用户信息
 						uni.setStorageSync('access_token', access_token);
@@ -145,8 +139,6 @@
 								url: '/pages/home/home'
 							});
 						}, 1500);
-					} else {
-						throw new Error('Login failed');
 					}
 				} catch (err) {
 					console.error('Login error:', err);

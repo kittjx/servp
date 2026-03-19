@@ -41,6 +41,8 @@
 </template>
 
 <script>
+import api from '../../utils/api.js'
+
 export default {
 	data() {
 		return {
@@ -51,15 +53,21 @@ export default {
 		this.loadUserInfo()
 	},
 	methods: {
-		loadUserInfo() {
-			const userInfo = uni.getStorageSync('user_info')
-			if (userInfo) {
-				this.userInfo = userInfo
-			} else {
-				// 未登录，跳转到登录页
-				uni.redirectTo({
-					url: '/pages/login/login'
-				})
+		async loadUserInfo() {
+			try {
+				// 使用 API 封装获取当前用户信息
+				this.userInfo = await api.get('/api/v1/auth/me')
+				// 更新本地存储
+				uni.setStorageSync('user_info', this.userInfo)
+			} catch (err) {
+				console.error('Load user info error:', err)
+				// 401 错误已经由 api.js 统一处理
+				if (err.message !== 'Unauthorized') {
+					uni.showToast({
+						title: 'Load Failed',
+						icon: 'none'
+					})
+				}
 			}
 		},
 
@@ -88,21 +96,8 @@ export default {
 				content: 'Are you sure to logout?',
 				success: (res) => {
 					if (res.confirm) {
-						// 清除存储
-						uni.removeStorageSync('access_token')
-						uni.removeStorageSync('user_info')
-
-						uni.showToast({
-							title: 'Logged Out',
-							icon: 'success'
-						})
-
-						// 跳转到登录页
-						setTimeout(() => {
-							uni.reLaunch({
-								url: '/pages/login/login'
-							})
-						}, 1500)
+						// 使用 API 封装清除缓存并跳转
+						api.clearCacheAndLogin()
 					}
 				}
 			})

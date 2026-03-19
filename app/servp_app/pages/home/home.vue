@@ -86,11 +86,12 @@
 </template>
 
 <script>
+import api from '../../utils/api.js'
+
 export default {
 	data() {
 		return {
 			userInfo: {},
-			apiBaseUrl: 'http://localhost:8000',
 			categories: ['Equipment Repair', 'Facility Maintenance', 'IT Support', 'Cleaning Service', 'Security Issue', 'Other'],
 			selectedCategory: '',
 			priorities: [
@@ -110,18 +111,25 @@ export default {
 		}
 	},
 	onLoad() {
-		this.loadUserInfo()
+		this.verifyUser()
 	},
 	methods: {
+		async verifyUser() {
+			try {
+				// 验证用户是否存在（需要认证，后端会验证 token 和用户是否存在）
+				await api.get('/api/v1/auth/me')
+				// 用户存在，加载用户信息
+				this.loadUserInfo()
+			} catch (err) {
+				// 用户不存在或 token 无效，清除缓存并跳转到登录页
+				api.clearCacheAndLogin()
+			}
+		},
+
 		loadUserInfo() {
 			const userInfo = uni.getStorageSync('user_info')
 			if (userInfo) {
 				this.userInfo = userInfo
-			} else {
-				// 未登录，跳转到登录页
-				uni.redirectTo({
-					url: '/pages/login/login'
-				})
 			}
 		},
 
@@ -181,51 +189,40 @@ export default {
 					}
 				}
 
-				// 提交工单
-				const token = uni.getStorageSync('access_token')
-				const response = await uni.request({
-					url: `${this.apiBaseUrl}/api/v1/order/create`,
-					method: 'POST',
-					data: {
-						reporter_id: this.userInfo.id,
-						description: this.description,
-						media_urls: mediaUrls.length > 0 ? mediaUrls : null,
-						priority: this.selectedPriority,
-						category: this.selectedCategory
-					},
-					header: {
-						'Content-Type': 'application/json',
-						'Authorization': `Bearer ${token}`
-					}
+				// 提交工单（不需要传递 reporter_id，后端会自动使用当前用户）
+				await api.post('/api/v1/order/create', {
+					description: this.description,
+					media_urls: mediaUrls.length > 0 ? mediaUrls : null,
+					priority: this.selectedPriority,
+					category: this.selectedCategory
 				})
 
-				if (response.statusCode === 201 && response.data) {
-					uni.showToast({
-						title: 'Submit Success',
-						icon: 'success'
+				uni.showToast({
+					title: 'Submit Success',
+					icon: 'success'
+				})
+
+				// 重置表单
+				this.selectedCategory = ''
+				this.selectedPriority = 'normal'
+				this.description = ''
+				this.imageList = []
+
+				// 跳转到工单列表（tabBar页面）
+				setTimeout(() => {
+					uni.switchTab({
+						url: '/pages/order/list'
 					})
-
-					// 重置表单
-					this.selectedCategory = ''
-					this.selectedPriority = 'normal'
-					this.description = ''
-					this.imageList = []
-
-					// 跳转到工单列表（tabBar页面）
-					setTimeout(() => {
-						uni.switchTab({
-							url: '/pages/order/list'
-						})
-					}, 1500)
-				} else {
-					throw new Error('Submit failed')
-				}
+				}, 1500)
 			} catch (err) {
 				console.error('Submit error:', err)
-				uni.showToast({
-					title: err.message || 'Submit Failed',
-					icon: 'none'
-				})
+				// 401 错误已经由 api.js 统一处理，这里不需要额外处理
+				if (err.message !== 'Unauthorized') {
+					uni.showToast({
+						title: err.message || 'Submit Failed',
+						icon: 'none'
+					})
+				}
 			} finally {
 				this.submitting = false
 			}
@@ -235,7 +232,7 @@ export default {
 			try {
 				const token = uni.getStorageSync('access_token')
 				const uploadRes = await uni.uploadFile({
-					url: `${this.apiBaseUrl}/api/v1/upload/image`,
+					url: 'http://localhost:8000/api/v1/upload/image',
 					filePath: filePath,
 					name: 'file',
 					header: {
@@ -245,7 +242,7 @@ export default {
 
 				if (uploadRes.statusCode === 201) {
 					const data = JSON.parse(uploadRes.data)
-					return `${this.apiBaseUrl}${data.url}`
+					return `http://localhost:8000${data.url}`
 				}
 				return null
 			} catch (err) {

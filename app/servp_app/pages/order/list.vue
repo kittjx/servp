@@ -107,6 +107,8 @@
 </template>
 
 <script>
+import api from '../../utils/api.js'
+
 export default {
 	data() {
 		return {
@@ -114,13 +116,10 @@ export default {
 			assignedOrders: [],
 			allOrders: [],
 			activeTab: 0,
-			loading: false,
-			apiBaseUrl: 'http://localhost:8000',
-			userInfo: {}
+			loading: false
 		}
 	},
 	onLoad() {
-		this.loadUserInfo()
 		this.loadOrders()
 	},
 	onShow() {
@@ -128,10 +127,6 @@ export default {
 		this.loadOrders()
 	},
 	methods: {
-		loadUserInfo() {
-			this.userInfo = uni.getStorageSync('user_info') || {}
-		},
-
 		switchTab(index) {
 			this.activeTab = index
 		},
@@ -140,35 +135,31 @@ export default {
 			this.loading = true
 
 			try {
-				const token = uni.getStorageSync('access_token')
-				const response = await uni.request({
-					url: `${this.apiBaseUrl}/api/v1/order/list`,
-					method: 'GET',
-					header: {
-						'Authorization': `Bearer ${token}`
-					}
-				})
-
-				if (response.statusCode === 200 && response.data) {
-					this.allOrders = response.data
-					this.filterOrders()
-				}
+				// 使用封装的 API 请求
+				this.allOrders = await api.get('/api/v1/order/list')
+				this.filterOrders()
 			} catch (err) {
 				console.error('Load orders error:', err)
-				uni.showToast({
-					title: 'Load Failed',
-					icon: 'none'
-				})
+				// 401 错误已经由 api.js 统一处理，这里不需要额外处理
+				if (err.message !== 'Unauthorized') {
+					uni.showToast({
+						title: 'Load Failed',
+						icon: 'none'
+					})
+				}
 			} finally {
 				this.loading = false
 			}
 		},
 
 		filterOrders() {
-			const userId = this.userInfo.id
-
-			this.submittedOrders = this.allOrders.filter(order => order.reporter_id === userId)
-			this.assignedOrders = this.allOrders.filter(order => order.handler_id === userId)
+			// 后端已经过滤，这里只需要分离两种类型的订单
+			this.submittedOrders = this.allOrders.filter(order => 
+				order.reporter_id && !order.handler_id
+			)
+			this.assignedOrders = this.allOrders.filter(order => 
+				order.handler_id
+			)
 		},
 
 		goToDetail(orderId) {
