@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlmodel import SQLModel, select, func
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...db.database import DBSession
 from ...models.order import WorkOrder, OrderStatus, OrderPriority, ProcessRecord, DispatchMethod

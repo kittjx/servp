@@ -46,8 +46,14 @@ class WorkOrder(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     completed_at: Optional[datetime] = None
 
-    reporter: "User" = Relationship(back_populates="work_orders")
-    handler: Optional["User"] = Relationship(back_populates="handled_orders")
+    reporter: "User" = Relationship(
+        back_populates="work_orders",
+        sa_relationship_kwargs={"foreign_keys": "[WorkOrder.reporter_id]"}
+    )
+    handler: Optional["User"] = Relationship(
+        back_populates="handled_orders",
+        sa_relationship_kwargs={"foreign_keys": "[WorkOrder.handler_id]"}
+    )
     records: List["ProcessRecord"] = Relationship(back_populates="work_order")
 
 class ProcessRecord(SQLModel, table=True):

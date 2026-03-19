@@ -1,16 +1,60 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	"pages": [
 		{
-			"path": "pages/index/index",
+			"path": "pages/login/login",
 			"style": {
-				"navigationBarTitleText": "uni-app"
+				"navigationBarTitleText": "Login"
+			}
+		},
+		{
+			"path": "pages/home/home",
+			"style": {
+				"navigationBarTitleText": "Home"
+			}
+		},
+		{
+			"path": "pages/order/list",
+			"style": {
+				"navigationBarTitleText": "My Orders"
+			}
+		},
+		{
+			"path": "pages/profile/profile",
+			"style": {
+				"navigationBarTitleText": "Profile"
 			}
 		}
 	],
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#07c160",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/home/home",
+				"iconPath": "static/tabbar/home.png",
+				"selectedIconPath": "static/tabbar/home-fill.png",
+				"text": "Home"
+			},
+			{
+				"pagePath": "pages/order/list",
+				"iconPath": "static/tabbar/order.png",
+				"selectedIconPath": "static/tabbar/order-fill.png",
+				"text": "Orders"
+			},
+			{
+				"pagePath": "pages/profile/profile",
+				"iconPath": "static/tabbar/profile.png",
+				"selectedIconPath": "static/tabbar/profile-fill.png",
+				"text": "Profile"
+			}
+		]
+	},
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
+		"navigationBarTitleText": "Hospital Service",
+		"navigationBarBackgroundColor": "#07c160",
 		"backgroundColor": "#F8F8F8"
 	},
 	"uniIdRouter": {}

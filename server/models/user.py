@@ -1,7 +1,10 @@
-from typing import Optional
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
-from sqlmodel import SQLModel, Field, Column
+from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy import String
+
+if TYPE_CHECKING:
+    from .order import WorkOrder, ProcessRecord
 
 
 class User(SQLModel, table=True):
@@ -20,6 +23,17 @@ class User(SQLModel, table=True):
     phone: Optional[str] = Field(default=None, max_length=20)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationships
+    work_orders: List["WorkOrder"] = Relationship(
+        back_populates="reporter",
+        sa_relationship_kwargs={"foreign_keys": "[WorkOrder.reporter_id]"}
+    )
+    handled_orders: List["WorkOrder"] = Relationship(
+        back_populates="handler",
+        sa_relationship_kwargs={"foreign_keys": "[WorkOrder.handler_id]"}
+    )
+    process_records: List["ProcessRecord"] = Relationship(back_populates="user")
 
 
 class UserLoginResponse(SQLModel):

@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 from ...db.database import DBSession
 from ...models.user import User, WeChatLoginRequest, UserLoginResponse
 from typing import Optional
 import httpx
-from datetime import timedelta
+from datetime import timedelta, datetime
 from jose import JWTError, jwt
 import os
 
