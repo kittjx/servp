@@ -75,7 +75,15 @@ async def accept_order(request: AcceptOrderRequest, current_user: CurrentUser, s
     order.handler_id = current_user.id
     order.status = OrderStatus.PROCESSING
     order.updated_at = datetime.utcnow()
-
+    
+    # Add process record
+    record = ProcessRecord(
+        order_id=order.id,
+        user_id=current_user.id,
+        action="accepted",
+        notes=f"Order accepted by {current_user.nickname}"
+    )
+    session.add(record)
     session.add(order)
     await session.commit()
     await session.refresh(order)
@@ -89,15 +97,26 @@ async def list_orders(
     skip: int = 0,
     limit: int = 100
 ):
-    # Get orders where user is either reporter or handler
-    statement = select(Order).where(
+    from sqlmodel import select
+    from sqlalchemy.orm import selectinload
+    
+    print(f"Current user ID: {current_user.id}")  # Debug log
+    
+    statement = select(Order).options(
+        selectinload(Order.reporter),
+        selectinload(Order.handler)
+    ).where(
         (Order.reporter_id == current_user.id) | (Order.handler_id == current_user.id)
-    )
+    ).order_by(Order.created_at.desc())
+    
     if status:
         statement = statement.where(Order.status == status)
 
     result = await session.exec(statement.offset(skip).limit(limit))
     orders = result.all()
+    
+    print(f"Found {len(orders)} orders")  # Debug log
+    
     return orders
 
 @order_router.post("/process", response_model=Order)
@@ -164,10 +183,12 @@ async def create_process_record(record: ProcessRecordCreate, session: DBSession)
 
 
 @order_router.patch("/reassign", response_model=Order)
-async def reassign_order(request: ReassignOrderRequest, current_user: CurrentUser, session: DBSession):
+async def reassign_order(
+    request: ReassignOrderRequest,
+    current_user: Annotated[User, Depends(require_leader_or_admin())],
+    session: DBSession
+):
     order = await get_order_or_404(request.order_id, session)
-    # Only allow reassigning if you are the current handler or an admin/dispatcher
-    # For now, we'll allow any authenticated user
     order.handler_id = request.new_handler_id
     order.dispatch_method = DispatchMethod.MANUAL
     order.updated_at = datetime.utcnow()

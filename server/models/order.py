@@ -27,14 +27,14 @@ class Order(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     order_id: str = Field(unique=True, index=True)
-    reporter_id: int = Field(foreign_key="users.id")
+    reporter_id: int = Field(foreign_key="users.id", index=True)
     description: str
     media_urls: Optional[List[str]] = Field(default=None, sa_column=Column(JSONB))
     priority: OrderPriority = OrderPriority.NORMAL
     category: str
-    status: OrderStatus = OrderStatus.PENDING
+    status: OrderStatus = Field(default=OrderStatus.PENDING, index=True)
     dispatch_method: DispatchMethod = DispatchMethod.AUTO
-    handler_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    handler_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
     satisfaction_score: Optional[int] = None
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)

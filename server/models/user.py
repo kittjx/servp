@@ -1,19 +1,9 @@
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
-from sqlmodel import SQLModel, Field, Column, Relationship
-from sqlalchemy import String
-
-import enum
+from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
     from .order import Order, ProcessRecord
-
-
-class UserRole(str, enum.Enum):
-    REPORTER = "reporter"  # 普通用户
-    ENGINEER = "engineer"  # 工程师（可以接单）
-    LEADER = "leader"  # 部门领导
-    ADMIN = "admin"  # 管理员
 
 
 class User(SQLModel, table=True):
@@ -24,14 +14,13 @@ class User(SQLModel, table=True):
     nickname: Optional[str] = Field(default=None, max_length=100)
     avatar_url: Optional[str] = Field(default=None, max_length=500)
     name: Optional[str] = Field(default=None, max_length=100)
-    gender: Optional[int] = Field(default=0)  # 0: unknown, 1: male, 2: female
+    gender: Optional[int] = Field(default=0)
     phone: Optional[str] = Field(default=None, max_length=20)
     department: Optional[str] = Field(default=None, max_length=100)
-    role: UserRole = Field(default=UserRole.REPORTER)
+    is_leader: bool = Field(default=False)
+    is_admin: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    
 
     # Relationships
     orders: List["Order"] = Relationship(

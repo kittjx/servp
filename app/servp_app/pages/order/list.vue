@@ -116,7 +116,10 @@ export default {
 			assignedOrders: [],
 			allOrders: [],
 			activeTab: 0,
-			loading: false
+			loading: false,
+			page: 1,
+			pageSize: 20,
+			hasMore: true
 		}
 	},
 	onLoad() {
@@ -131,12 +134,21 @@ export default {
 			this.activeTab = index
 		},
 
-		async loadOrders() {
+		async loadOrders(loadMore = false) {
+			if (loadMore && !this.hasMore) return
+			
 			this.loading = true
-
 			try {
-				// 使用封装的 API 请求
-				this.allOrders = await api.get('/api/v1/order/list')
+				const skip = loadMore ? this.allOrders.length : 0
+				const orders = await api.get(`/api/v1/order/list?skip=${skip}&limit=${this.pageSize}`)
+				
+				if (loadMore) {
+					this.allOrders = [...this.allOrders, ...orders]
+				} else {
+					this.allOrders = orders
+				}
+				
+				this.hasMore = orders.length === this.pageSize
 				this.filterOrders()
 			} catch (err) {
 				console.error('Load orders error:', err)
@@ -153,13 +165,33 @@ export default {
 		},
 
 		filterOrders() {
-			// 后端已经过滤，这里只需要分离两种类型的订单
-			this.submittedOrders = this.allOrders.filter(order => 
-				order.reporter_id && !order.handler_id
-			)
+			// Get user info from storage
+			const userInfo = uni.getStorageSync('user_info')
+			const currentUserId = userInfo?.id
+			
+			console.log('Current user ID:', currentUserId)
+			console.log('All orders:', this.allOrders)
+			
+			if (!currentUserId) {
+				console.error('No user ID found')
+				this.submittedOrders = []
+				this.assignedOrders = []
+				return
+			}
+			
+			// Orders I submitted (I'm the reporter)
+			this.submittedOrders = this.allOrders.filter(order => {
+				console.log(`Order ${order.id}: reporter_id=${order.reporter_id}, handler_id=${order.handler_id}`)
+				return order.reporter_id === currentUserId
+			})
+			
+			// Orders assigned to me (I'm the handler)
 			this.assignedOrders = this.allOrders.filter(order => 
-				order.handler_id
+				order.handler_id === currentUserId
 			)
+			
+			console.log('Submitted orders:', this.submittedOrders.length)
+			console.log('Assigned orders:', this.assignedOrders.length)
 		},
 
 		goToDetail(orderId) {

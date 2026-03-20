@@ -5,12 +5,11 @@ const API_BASE_URL = 'http://localhost:8000'
  * 清除所有缓存并跳转到登录页面
  */
 function clearCacheAndLogin() {
-	// 清除所有缓存
 	uni.removeStorageSync('access_token')
 	uni.removeStorageSync('user_info')
 	uni.removeStorageSync('token')
+	uni.removeStorageSync('userId')
 
-	// 跳转到登录页面
 	uni.reLaunch({
 		url: '/pages/login/login'
 	})
@@ -18,9 +17,6 @@ function clearCacheAndLogin() {
 
 /**
  * 统一的请求函数
- * @param {string} url - 请求地址
- * @param {object} options - 请求选项
- * @returns {Promise}
  */
 function request(url, options = {}) {
 	const {
@@ -31,24 +27,20 @@ function request(url, options = {}) {
 		...restOptions
 	} = options
 
-	// 构建完整的请求头
 	const requestHeader = {
 		'Content-Type': 'application/json',
 		...header
 	}
 
-	// 如果需要认证，添加 token
 	if (needAuth) {
 		const token = uni.getStorageSync('access_token')
 		if (!token) {
-			// 没有 token，直接跳转到登录页
 			clearCacheAndLogin()
 			return Promise.reject(new Error('No token found'))
 		}
 		requestHeader['Authorization'] = `Bearer ${token}`
 	}
 
-	// 返回 Promise
 	return new Promise((resolve, reject) => {
 		uni.request({
 			url: `${API_BASE_URL}${url}`,
@@ -56,7 +48,6 @@ function request(url, options = {}) {
 			data,
 			header: requestHeader,
 			success: (res) => {
-				// 处理 401 未授权错误
 				if (res.statusCode === 401) {
 					console.error('Unauthorized:', res.data)
 					clearCacheAndLogin()
@@ -64,7 +55,6 @@ function request(url, options = {}) {
 					return
 				}
 
-				// 处理其他错误
 				if (res.statusCode >= 400) {
 					const errorMessage = res.data?.detail || res.data?.message || 'Request failed'
 					uni.showToast({
@@ -76,7 +66,6 @@ function request(url, options = {}) {
 					return
 				}
 
-				// 成功返回数据
 				resolve(res.data)
 			},
 			fail: (err) => {
@@ -93,7 +82,6 @@ function request(url, options = {}) {
 	})
 }
 
-// 导出常用的请求方法
 export default {
 	get(url, options = {}) {
 		return request(url, { ...options, method: 'GET' })
@@ -115,11 +103,9 @@ export default {
 		return request(url, { ...options, method: 'PATCH', data })
 	},
 
-	// 不需要认证的请求
 	public(url, data, options = {}) {
 		return request(url, { ...options, method: 'POST', data, needAuth: false })
 	},
 
-	// 手动清除缓存并登录
 	clearCacheAndLogin
 }

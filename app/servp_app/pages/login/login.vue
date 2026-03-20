@@ -126,6 +126,7 @@
 
 						// 保存token和用户信息
 						uni.setStorageSync('access_token', access_token);
+						uni.setStorageSync('userId', user.id);
 						uni.setStorageSync('user_info', user);
 
 						uni.showToast({

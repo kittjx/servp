@@ -3,11 +3,11 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from ...db.database import DBSession
 from ...models.user import User, WeChatLoginRequest, UserLoginResponse
-from typing import Optional, Annotated
-import httpx
+from typing import Optional, Annotated, List
 from datetime import timedelta, datetime
 from jose import JWTError, jwt
 import os
+import httpx
 
 
 # Router
@@ -210,3 +210,39 @@ async def get_current_user_endpoint(
 ):
     """Get current user info"""
     return current_user
+
+
+def require_leader():
+    """Dependency to check if user is a leader"""
+    async def role_checker(current_user: CurrentUser) -> User:
+        if not current_user.is_leader:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Requires leader role"
+            )
+        return current_user
+    return role_checker
+
+
+def require_admin():
+    """Dependency to check if user is an admin"""
+    async def role_checker(current_user: CurrentUser) -> User:
+        if not current_user.is_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Requires admin role"
+            )
+        return current_user
+    return role_checker
+
+
+def require_leader_or_admin():
+    """Dependency to check if user is a leader or admin"""
+    async def role_checker(current_user: CurrentUser) -> User:
+        if not (current_user.is_leader or current_user.is_admin):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Requires leader or admin role"
+            )
+        return current_user
+    return role_checker
