@@ -6,13 +6,6 @@ from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSONB
 
 
-class UserRole(str, enum.Enum):
-    REPORTER = "reporter"
-    ENGINEER = "engineer"
-    DISPATCHER = "dispatcher"
-    LEADER = "leader"
-    ADMIN = "admin"
-
 class OrderStatus(str, enum.Enum):
     PENDING = "pending"
     PROCESSING = "processing"
@@ -23,6 +16,7 @@ class OrderPriority(str, enum.Enum):
     URGENT = "urgent"
     HIGH = "high"
     NORMAL = "normal"
+    LOW = "low"
 
 class DispatchMethod(str, enum.Enum):
     AUTO = "auto"

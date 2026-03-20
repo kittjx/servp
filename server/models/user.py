@@ -12,19 +12,18 @@ if TYPE_CHECKING:
 class UserRole(str, enum.Enum):
     REPORTER = "reporter"  # 普通用户
     ENGINEER = "engineer"  # 工程师（可以接单）
-    DISPATCHER = "dispatcher"  # 调度员
     LEADER = "leader"  # 部门领导
     ADMIN = "admin"  # 管理员
 
 
 class User(SQLModel, table=True):
-    """User model for WeChat login"""
     __tablename__ = "users"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     openid: str = Field(index=True, unique=True, max_length=100)
     nickname: Optional[str] = Field(default=None, max_length=100)
     avatar_url: Optional[str] = Field(default=None, max_length=500)
+    name: Optional[str] = Field(default=None, max_length=100)
     gender: Optional[int] = Field(default=0)  # 0: unknown, 1: male, 2: female
     phone: Optional[str] = Field(default=None, max_length=20)
     department: Optional[str] = Field(default=None, max_length=100)
