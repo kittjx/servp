@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: d6dafe27c380
+Revision ID: bbe6f95d75e2
 Revises: 
-Create Date: 2026-03-20 06:45:50.497600
+Create Date: 2026-03-20 06:52:44.128443
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'd6dafe27c380'
+revision: str = 'bbe6f95d75e2'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,10 +27,11 @@ def upgrade() -> None:
     sa.Column('openid', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
     sa.Column('nickname', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
     sa.Column('avatar_url', sqlmodel.sql.sqltypes.AutoString(length=500), nullable=True),
+    sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
     sa.Column('gender', sa.Integer(), nullable=True),
     sa.Column('phone', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True),
     sa.Column('department', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
-    sa.Column('role', sa.Enum('REPORTER', 'ENGINEER', 'DISPATCHER', 'LEADER', 'ADMIN', name='userrole'), nullable=False),
+    sa.Column('role', sa.Enum('REPORTER', 'ENGINEER', 'LEADER', 'ADMIN', name='userrole'), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -42,7 +43,7 @@ def upgrade() -> None:
     sa.Column('reporter_id', sa.Integer(), nullable=False),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('media_urls', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('priority', sa.Enum('URGENT', 'HIGH', 'NORMAL', name='orderpriority'), nullable=False),
+    sa.Column('priority', sa.Enum('URGENT', 'HIGH', 'NORMAL', 'LOW', name='orderpriority'), nullable=False),
     sa.Column('category', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('status', sa.Enum('PENDING', 'PROCESSING', 'WAITING_FOR_ACCEPTANCE', 'COMPLETED', name='orderstatus'), nullable=False),
     sa.Column('dispatch_method', sa.Enum('AUTO', 'MANUAL', name='dispatchmethod'), nullable=False),
