@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: c5885b9ef7ce
+Revision ID: d6dafe27c380
 Revises: 
-Create Date: 2026-03-19 03:17:27.438418
+Create Date: 2026-03-20 06:45:50.497600
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'c5885b9ef7ce'
+revision: str = 'd6dafe27c380'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,11 +28,9 @@ def upgrade() -> None:
     sa.Column('nickname', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
     sa.Column('avatar_url', sqlmodel.sql.sqltypes.AutoString(length=500), nullable=True),
     sa.Column('gender', sa.Integer(), nullable=True),
-    sa.Column('city', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
-    sa.Column('province', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
-    sa.Column('country', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
-    sa.Column('language', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True),
     sa.Column('phone', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True),
+    sa.Column('department', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
+    sa.Column('role', sa.Enum('REPORTER', 'ENGINEER', 'DISPATCHER', 'LEADER', 'ADMIN', name='userrole'), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id')

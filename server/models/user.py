@@ -3,8 +3,18 @@ from datetime import datetime
 from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy import String
 
+import enum
+
 if TYPE_CHECKING:
     from .order import Order, ProcessRecord
+
+
+class UserRole(str, enum.Enum):
+    REPORTER = "reporter"  # 普通用户
+    ENGINEER = "engineer"  # 工程师（可以接单）
+    DISPATCHER = "dispatcher"  # 调度员
+    LEADER = "leader"  # 部门领导
+    ADMIN = "admin"  # 管理员
 
 
 class User(SQLModel, table=True):
@@ -16,13 +26,13 @@ class User(SQLModel, table=True):
     nickname: Optional[str] = Field(default=None, max_length=100)
     avatar_url: Optional[str] = Field(default=None, max_length=500)
     gender: Optional[int] = Field(default=0)  # 0: unknown, 1: male, 2: female
-    city: Optional[str] = Field(default=None, max_length=50)
-    province: Optional[str] = Field(default=None, max_length=50)
-    country: Optional[str] = Field(default=None, max_length=50)
-    language: Optional[str] = Field(default=None, max_length=20)
     phone: Optional[str] = Field(default=None, max_length=20)
+    department: Optional[str] = Field(default=None, max_length=100)
+    role: UserRole = Field(default=UserRole.REPORTER)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    
 
     # Relationships
     orders: List["Order"] = Relationship(
