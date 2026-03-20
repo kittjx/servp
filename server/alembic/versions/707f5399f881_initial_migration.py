@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 2d5b3d820df4
+Revision ID: 707f5399f881
 Revises: 
-Create Date: 2026-03-20 07:47:14.741782
+Create Date: 2026-03-20 09:18:10.145959
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '2d5b3d820df4'
+revision: str = '707f5399f881'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -33,8 +33,8 @@ def upgrade() -> None:
     sa.Column('department', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
     sa.Column('is_leader', sa.Boolean(), nullable=False),
     sa.Column('is_admin', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_openid'), 'users', ['openid'], unique=True)
@@ -50,9 +50,9 @@ def upgrade() -> None:
     sa.Column('dispatch_method', sa.Enum('AUTO', 'MANUAL', name='dispatchmethod'), nullable=False),
     sa.Column('handler_id', sa.Integer(), nullable=True),
     sa.Column('satisfaction_score', sa.Integer(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=False),
-    sa.Column('completed_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['handler_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['reporter_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -67,7 +67,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('action', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('notes', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')

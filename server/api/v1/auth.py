@@ -4,7 +4,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from ...db.database import DBSession
 from ...models.user import User, WeChatLoginRequest, UserLoginResponse
 from typing import Optional, Annotated, List
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from jose import JWTError, jwt
 import os
 import httpx
@@ -106,9 +106,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT access token"""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -166,11 +166,6 @@ async def wechat_login(request: WeChatLoginRequest, session: DBSession):
             user.nickname = request.user_info.get("nickName", user.nickname)
             user.avatar_url = request.user_info.get("avatarUrl", user.avatar_url)
             user.gender = request.user_info.get("gender", user.gender)
-            user.city = request.user_info.get("city", user.city)
-            user.province = request.user_info.get("province", user.province)
-            user.country = request.user_info.get("country", user.country)
-            user.language = request.user_info.get("language", user.language)
-            user.updated_at = datetime.utcnow()
         
         session.add(user)
         await session.commit()

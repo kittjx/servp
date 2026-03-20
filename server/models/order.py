@@ -1,8 +1,8 @@
-from sqlmodel import Field, SQLModel, Relationship
+from sqlmodel import Field, SQLModel, Relationship, func
 from typing import Optional, List
 from datetime import datetime
 import enum
-from sqlalchemy import Column
+from sqlalchemy import Column, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
 
 
@@ -36,9 +36,19 @@ class Order(SQLModel, table=True):
     dispatch_method: DispatchMethod = DispatchMethod.AUTO
     handler_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
     satisfaction_score: Optional[int] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    completed_at: Optional[datetime] = None
+
+    created_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    )
+    updated_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    )
+    completed_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
 
     reporter: "User" = Relationship(
         back_populates="orders",
@@ -58,7 +68,10 @@ class ProcessRecord(SQLModel, table=True):
     user_id: int = Field(foreign_key="users.id")
     action: str
     notes: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    )
 
     order: "Order" = Relationship(back_populates="records")
     user: "User" = Relationship(back_populates="process_records")

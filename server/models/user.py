@@ -1,6 +1,7 @@
 from typing import Optional, List, TYPE_CHECKING
-from datetime import datetime
-from sqlmodel import SQLModel, Field, Relationship
+from datetime import datetime, timezone
+from sqlmodel import SQLModel, Field, Relationship, func
+from sqlalchemy import Column, DateTime
 
 if TYPE_CHECKING:
     from .order import Order, ProcessRecord
@@ -19,8 +20,15 @@ class User(SQLModel, table=True):
     department: Optional[str] = Field(default=None, max_length=100)
     is_leader: bool = Field(default=False)
     is_admin: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    created_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    )
+    updated_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    )
 
     # Relationships
     orders: List["Order"] = Relationship(
