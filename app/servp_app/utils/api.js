@@ -109,3 +109,30 @@ export default {
 
 	clearCacheAndLogin
 }
+
+const api = {
+	async get(url) {
+		return request(url, 'GET')
+	},
+
+	async post(url, data) {
+		return request(url, 'POST', data)
+	},
+
+	async put(url, data) {
+		return request(url, 'PUT', data)
+	},
+
+	async public(url, data) {
+		return publicRequest(url, data)
+	},
+
+	clearCacheAndLogin() {
+		uni.removeStorageSync('access_token')
+		uni.removeStorageSync('userId')
+		uni.removeStorageSync('user_info')
+		uni.reLaunch({
+			url: '/pages/login/login'
+		})
+	}
+}
