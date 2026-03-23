@@ -139,7 +139,13 @@ async def process_order(request: ProcessOrderRequest, current_user: CurrentUser,
 @order_router.get("/process-records/{orderId}", response_model=List[ProcessRecord])
 async def get_process_records(orderId: int, session: DBSession):
     order = await get_order_or_404(orderId, session)
-    return order.records
+    
+    # Explicitly query process records instead of using lazy-loaded relationship
+    statement = select(ProcessRecord).where(ProcessRecord.order_id == order.id).order_by(ProcessRecord.created_at.desc())
+    result = await session.execute(statement)
+    records = result.scalars().all()
+    
+    return records
 
 @order_router.post("/confirm", response_model=Order)
 async def confirm_order(request: ConfirmOrderRequest, current_user: CurrentUser, session: DBSession):
