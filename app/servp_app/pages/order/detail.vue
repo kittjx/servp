@@ -64,7 +64,7 @@
 				<view class="info-item" v-if="order.reporter">
 					<text class="label">Reporter</text>
 					<view class="user-info">
-						<image :src="order.reporter.avatar_url || '/static/default-avatar.png'" class="avatar"></image>
+						<image class="avatar" :src="getUserAvatar(order.reporter)"></image>
 						<text class="value">{{ order.reporter.nickname || order.reporter.name || 'Unknown' }}</text>
 					</view>
 				</view>
@@ -72,7 +72,7 @@
 				<view class="info-item" v-if="order.handler">
 					<text class="label">Handler</text>
 					<view class="user-info">
-						<image :src="order.handler.avatar_url || '/static/default-avatar.png'" class="avatar"></image>
+						<image class="avatar" :src="getUserAvatar(order.handler)"></image>
 						<text class="value">{{ order.handler.nickname || order.handler.name || 'Unassigned' }}</text>
 					</view>
 				</view>
@@ -178,6 +178,15 @@ export default {
 		this.loadOrderDetail()
 	},
 	methods: {
+		getUserAvatar(user) {
+			if (!user || !user.avatar_url) {
+				return '/static/default-avatar.png'
+			}
+			if (user.avatar_url.includes('__tmp__') || user.avatar_url.startsWith('http://tmp')) {
+				return '/static/default-avatar.png'
+			}
+			return user.avatar_url
+		},
 		async loadOrderDetail() {
 			this.loading = true
 			try {

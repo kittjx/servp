@@ -164,19 +164,23 @@ async def wechat_login(request: WeChatLoginRequest, session: DBSession):
         # Update user info if provided
         if request.user_info:
             user.nickname = request.user_info.get("nickName", user.nickname)
-            user.avatar_url = request.user_info.get("avatarUrl", user.avatar_url)
-            user.gender = request.user_info.get("gender", user.gender)
-        
+            avatar_url = request.user_info.get("avatarUrl", "")
+            # Only save valid URLs
+            if avatar_url and not ("__tmp__" in avatar_url or avatar_url.startswith("http://tmp")):
+                user.avatar_url = avatar_url
         session.add(user)
         await session.commit()
         await session.refresh(user)
     else:
         # Create new user
         user_info = request.user_info or {}
+        avatar_url = user_info.get("avatarUrl", "")
+        if "__tmp__" in avatar_url or avatar_url.startswith("http://tmp"):
+            avatar_url = None
         user = User(
             openid=openid,
             nickname=user_info.get("nickName"),
-            avatar_url=user_info.get("avatarUrl"),
+            avatar_url=avatar_url,
             gender=user_info.get("gender", 0),
             city=user_info.get("city"),
             province=user_info.get("province"),
@@ -241,26 +245,3 @@ def require_leader_or_admin():
             )
         return current_user
     return role_checker
-
-
-class UpdateProfileRequest(BaseModel):
-    name: str
-    phone: str
-    department: str
-
-@auth_router.put("/profile", response_model=User)
-async def update_profile(
-    request: UpdateProfileRequest,
-    current_user: CurrentUser,
-    session: DBSession
-):
-    """Update user profile"""
-    current_user.name = request.name
-    current_user.phone = request.phone
-    current_user.department = request.department
-    
-    session.add(current_user)
-    await session.commit()
-    await session.refresh(current_user)
-    
-    return current_user

@@ -3,7 +3,7 @@
 		<view class="content">
 			<view class="header">
 				<view class="user-info">
-					<image class="avatar" :src="userInfo.avatar_url || '/static/default-avatar.png'"></image>
+					<image class="avatar" :src="getUserAvatar(userInfo)"></image>
 					<view class="user-text">
 						<text class="nickname">{{ userInfo.nickname || 'User' }}</text>
 						<text class="welcome">Welcome to Hospital Service</text>
@@ -92,7 +92,7 @@ export default {
 	data() {
 		return {
 			userInfo: {},
-			categories: ['Equipment Repair', 'Facility Maintenance', 'IT Support', 'Cleaning Service', 'Security Issue', 'Other'],
+			categories: ['信息科', '设备科', '总务科', '动力科'],
 			selectedCategory: '',
 			priorities: [
 				{ label: 'Urgent', value: 'urgent' },
@@ -114,6 +114,16 @@ export default {
 		this.verifyUser()
 	},
 	methods: {
+		getUserAvatar(user) {
+			if (!user || !user.avatar_url) {
+				return '/static/default-avatar.png'
+			}
+			// Filter out temporary local paths
+			if (user.avatar_url.includes('__tmp__') || user.avatar_url.startsWith('http://tmp')) {
+				return '/static/default-avatar.png'
+			}
+			return user.avatar_url
+		},
 		async verifyUser() {
 			try {
 				// 验证用户是否存在（需要认证，后端会验证 token 和用户是否存在）

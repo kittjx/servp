@@ -8,7 +8,7 @@ from ...models.user import User
 from ...api.v1.auth import CurrentUser
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import random
 import string
 
@@ -17,6 +17,31 @@ def generate_order_id():
     date_str = now.strftime("%Y%m%d%H%M%S")
     random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     return f"{date_str}-{random_str}"
+
+class UserResponse(SQLModel):
+    id: int
+    name: str
+    nickname: Optional[str] = None
+    avatar_url: Optional[str] = None
+    department: Optional[str] = None
+
+class OrderResponse(SQLModel):
+    id: int
+    order_id: str
+    reporter_id: int
+    description: str
+    media_urls: Optional[List[str]] = None
+    priority: OrderPriority
+    category: str
+    status: OrderStatus
+    dispatch_method: DispatchMethod
+    handler_id: Optional[int] = None
+    satisfaction_score: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    reporter: Optional[UserResponse] = None
+    handler: Optional[UserResponse] = None
 
 class OrderCreate(SQLModel):
     description: str
@@ -74,7 +99,7 @@ async def accept_order(request: AcceptOrderRequest, current_user: CurrentUser, s
     order = await get_order_or_404(request.order_id, session)
     order.handler_id = current_user.id
     order.status = OrderStatus.PROCESSING
-    order.updated_at = datetime.utcnow()
+    #order.updated_at = datetime.now(timezone.utc)
     
     # Add process record
     record = ProcessRecord(
@@ -89,7 +114,7 @@ async def accept_order(request: AcceptOrderRequest, current_user: CurrentUser, s
     await session.refresh(order)
     return order
 
-@order_router.get("/list", response_model=List[Order])
+@order_router.get("/list", response_model=List[OrderResponse])
 async def list_orders(
     current_user: CurrentUser,
     session: DBSession,
@@ -97,27 +122,116 @@ async def list_orders(
     skip: int = 0,
     limit: int = 100
 ):
-    from sqlmodel import select
+    from sqlmodel import select, or_
     from sqlalchemy.orm import selectinload
     
-    print(f"Current user ID: {current_user.id}")  # Debug log
+    print(f"Current user ID: {current_user.id}, is_leader: {current_user.is_leader}, department: {current_user.department}")
     
+    # Base query with eager loading
     statement = select(Order).options(
         selectinload(Order.reporter),
         selectinload(Order.handler)
-    ).where(
-        (Order.reporter_id == current_user.id) | (Order.handler_id == current_user.id)
-    ).order_by(Order.created_at.desc())
+    )
+    
+    # If user is a department leader, show all orders in their department category
+    if current_user.is_leader and current_user.department:
+        print(f"Leader viewing department: {current_user.department}")
+        
+        # Show orders where category matches the leader's department
+        # OR orders where the user is reporter/handler
+        statement = statement.where(
+            or_(
+                Order.category == current_user.department,
+                Order.reporter_id == current_user.id,
+                Order.handler_id == current_user.id
+            )
+        )
+    else:
+        # Regular users only see their own orders
+        statement = statement.where(
+            (Order.reporter_id == current_user.id) | (Order.handler_id == current_user.id)
+        )
+    
+    statement = statement.order_by(Order.created_at.desc())
     
     if status:
         statement = statement.where(Order.status == status)
 
-    result = await session.exec(statement.offset(skip).limit(limit))
-    orders = result.all()
+    result = await session.execute(statement.offset(skip).limit(limit))
+    orders = result.scalars().all()
     
-    print(f"Found {len(orders)} orders")  # Debug log
+    print(f"Found {len(orders)} orders")
     
     return orders
+
+
+@order_router.get("/department/engineers", response_model=List[User])
+async def get_department_engineers(
+    current_user: CurrentUser,
+    session: DBSession
+):
+    """Get all engineers in the current user's department"""
+    if not current_user.department:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You don't have a department assigned"
+        )
+    
+    statement = select(User).where(
+        User.department == current_user.department,
+        User.id != current_user.id  # Exclude self
+    ).order_by(User.name)
+    
+    result = await session.execute(statement)
+    engineers = result.scalars().all()
+    
+    return engineers
+
+
+@order_router.post("/assign", response_model=OrderResponse)
+async def assign_order(
+    request: ReassignOrderRequest,
+    current_user: CurrentUser,
+    session: DBSession
+):
+    """Assign order to an engineer (department leader only)"""
+    order = await get_order_or_404(request.order_id, session)
+    
+    # Verify the new handler is in the same department
+    handler_stmt = select(User).where(User.id == request.new_handler_id)
+    handler_result = await session.execute(handler_stmt)
+    new_handler = handler_result.scalar_one_or_none()
+    
+    if not new_handler:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Handler not found"
+        )
+    
+    if new_handler.department != current_user.department:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Can only assign to engineers in your department"
+        )
+    
+    order.handler_id = request.new_handler_id
+    order.dispatch_method = DispatchMethod.MANUAL
+    order.status = OrderStatus.PROCESSING
+    #order.updated_at = datetime.now(timezone.utc)
+    
+    # Add process record
+    record = ProcessRecord(
+        order_id=order.id,
+        user_id=current_user.id,
+        action="assigned",
+        notes=f"Order assigned to {new_handler.name or new_handler.nickname} by {current_user.name or current_user.nickname}"
+    )
+    session.add(record)
+    session.add(order)
+    await session.commit()
+    await session.refresh(order)
+    
+    return order
 
 @order_router.post("/process", response_model=Order)
 async def process_order(request: ProcessOrderRequest, current_user: CurrentUser, session: DBSession):
@@ -129,7 +243,7 @@ async def process_order(request: ProcessOrderRequest, current_user: CurrentUser,
             detail="You are not authorized to process this order"
         )
     order.status = OrderStatus.WAITING_FOR_ACCEPTANCE
-    order.updated_at = datetime.utcnow()
+    #order.updated_at = datetime.now(timezone.utc)
 
     session.add(order)
     await session.commit()
@@ -157,8 +271,8 @@ async def confirm_order(request: ConfirmOrderRequest, current_user: CurrentUser,
             detail="You are not authorized to confirm this order"
         )
     order.status = OrderStatus.COMPLETED
-    order.completed_at = datetime.utcnow()
-    order.updated_at = datetime.utcnow()
+    order.completed_at = datetime.now(timezone.utc)
+    #order.updated_at = datetime.now(timezone.utc)
     if request.satisfaction_score is not None:
         order.satisfaction_score = request.satisfaction_score
 
@@ -167,9 +281,25 @@ async def confirm_order(request: ConfirmOrderRequest, current_user: CurrentUser,
     await session.refresh(order)
     return order
 
-@order_router.get("/{order_id}", response_model=Order)
-async def get_order_detail(order_id: int, session: DBSession):
-    return await get_order_or_404(order_id, session)
+@order_router.get("/{orderId}", response_model=OrderResponse)
+async def get_order(orderId: int, current_user: CurrentUser, session: DBSession):
+    from sqlalchemy.orm import selectinload
+    
+    statement = select(Order).options(
+        selectinload(Order.reporter),
+        selectinload(Order.handler)
+    ).where(Order.id == orderId)
+    
+    result = await session.execute(statement)
+    order = result.scalar_one_or_none()
+    
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found"
+        )
+    
+    return order
 
 
 @order_router.post("/process-record", response_model=ProcessRecord, status_code=status.HTTP_201_CREATED)
@@ -191,13 +321,13 @@ async def create_process_record(record: ProcessRecordCreate, session: DBSession)
 @order_router.patch("/reassign", response_model=Order)
 async def reassign_order(
     request: ReassignOrderRequest,
-    current_user: Annotated[User, Depends(require_leader_or_admin())],
+    current_user: CurrentUser,
     session: DBSession
 ):
     order = await get_order_or_404(request.order_id, session)
     order.handler_id = request.new_handler_id
     order.dispatch_method = DispatchMethod.MANUAL
-    order.updated_at = datetime.utcnow()
+    #order.updated_at = datetime.now(timezone.utc)
 
     session.add(order)
     await session.commit()
