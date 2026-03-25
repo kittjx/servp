@@ -28,7 +28,7 @@
 				</view>
 			</view>
 			<view 
-				v-if="userInfo.is_leader"
+				v-if="userInfo.department"
 				class="tab-item" 
 				:class="{ 'active': activeTab === 2 }"
 				@click="switchTab(2)"
@@ -109,8 +109,8 @@
 			</view>
 		</view>
 
-		<!-- 部门订单列表 (仅部门主管可见) -->
-		<view class="order-list" v-if="activeTab === 2 && userInfo.is_leader">
+		<!-- 部门订单列表 (所有部门成员可见) -->
+		<view class="order-list" v-if="activeTab === 2 && userInfo.department">
 			<view 
 				class="order-item" 
 				v-for="order in departmentOrders" 
@@ -142,8 +142,17 @@
 					<text class="priority" :class="order.priority">{{ getPriorityText(order.priority) }}</text>
 					<view class="footer-actions">
 						<text class="time">{{ formatTime(order.created_at) }}</text>
+						<!-- Regular users can accept unassigned orders -->
 						<button 
-							v-if="order.status === 'pending' || !order.handler_id"
+							v-if="!userInfo.is_leader && order.status === 'pending' && !order.handler_id"
+							class="assign-btn" 
+							@click.stop="acceptOrder(order)"
+						>
+							Accept
+						</button>
+						<!-- Leaders can assign orders -->
+						<button 
+							v-if="userInfo.is_leader && (order.status === 'pending' || !order.handler_id)"
 							class="assign-btn" 
 							@click.stop="showAssignModal(order)"
 						>
@@ -290,8 +299,8 @@ export default {
 				order.handler_id === currentUserId
 			)
 			
-			// Department orders (for leaders) - show ALL orders in department category
-			if (this.userInfo.is_leader && this.userInfo.department) {
+			// Department orders - show ALL orders in my department category
+			if (this.userInfo.department) {
 				this.departmentOrders = this.allOrders.filter(order => 
 					order.category === this.userInfo.department
 				)
@@ -389,6 +398,27 @@ export default {
 				return `${Math.floor(diff / hour)} hours ago`
 			} else {
 				return date.toLocaleDateString()
+			}
+		},
+
+		async acceptOrder(order) {
+			try {
+				await api.post('/api/v1/order/accept', {
+					order_id: order.id
+				})
+				
+				uni.showToast({
+					title: 'Order Accepted',
+					icon: 'success'
+				})
+				
+				this.loadOrders()
+			} catch (err) {
+				console.error('Accept order error:', err)
+				uni.showToast({
+					title: err.message || 'Accept Failed',
+					icon: 'none'
+				})
 			}
 		}
 	}

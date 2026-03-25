@@ -125,20 +125,15 @@ async def list_orders(
     from sqlmodel import select, or_
     from sqlalchemy.orm import selectinload
     
-    print(f"Current user ID: {current_user.id}, is_leader: {current_user.is_leader}, department: {current_user.department}")
-    
     # Base query with eager loading
     statement = select(Order).options(
         selectinload(Order.reporter),
         selectinload(Order.handler)
     )
     
-    # If user is a department leader, show all orders in their department category
-    if current_user.is_leader and current_user.department:
-        print(f"Leader viewing department: {current_user.department}")
-        
-        # Show orders where category matches the leader's department
-        # OR orders where the user is reporter/handler
+    # If user has a department, show all orders in their department category
+    # OR orders where the user is reporter/handler
+    if current_user.department:
         statement = statement.where(
             or_(
                 Order.category == current_user.department,
@@ -147,7 +142,7 @@ async def list_orders(
             )
         )
     else:
-        # Regular users only see their own orders
+        # Users without department only see their own orders
         statement = statement.where(
             (Order.reporter_id == current_user.id) | (Order.handler_id == current_user.id)
         )
@@ -159,8 +154,6 @@ async def list_orders(
 
     result = await session.execute(statement.offset(skip).limit(limit))
     orders = result.scalars().all()
-    
-    print(f"Found {len(orders)} orders")
     
     return orders
 
@@ -242,9 +235,17 @@ async def process_order(request: ProcessOrderRequest, current_user: CurrentUser,
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to process this order"
         )
-    order.status = OrderStatus.WAITING_FOR_ACCEPTANCE
-    #order.updated_at = datetime.now(timezone.utc)
-
+    order.status = OrderStatus.COMPLETED
+    order.completed_at = datetime.now(timezone.utc)
+    
+    # Add process record
+    record = ProcessRecord(
+        order_id=order.id,
+        user_id=current_user.id,
+        action="completed",
+        notes=f"Order completed by {current_user.nickname or current_user.name}"
+    )
+    session.add(record)
     session.add(order)
     await session.commit()
     await session.refresh(order)
@@ -272,10 +273,18 @@ async def confirm_order(request: ConfirmOrderRequest, current_user: CurrentUser,
         )
     order.status = OrderStatus.COMPLETED
     order.completed_at = datetime.now(timezone.utc)
-    #order.updated_at = datetime.now(timezone.utc)
+    
     if request.satisfaction_score is not None:
         order.satisfaction_score = request.satisfaction_score
-
+    
+    # Add process record
+    record = ProcessRecord(
+        order_id=order.id,
+        user_id=current_user.id,
+        action="confirmed",
+        notes=f"Order confirmed by reporter with satisfaction score: {request.satisfaction_score or 'N/A'}"
+    )
+    session.add(record)
     session.add(order)
     await session.commit()
     await session.refresh(order)

@@ -245,3 +245,30 @@ def require_leader_or_admin():
             )
         return current_user
     return role_checker
+
+
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    department: Optional[str] = None
+
+
+@auth_router.put("/profile", response_model=User)
+async def update_profile(
+    request: UpdateProfileRequest,
+    current_user: CurrentUser,
+    session: DBSession
+):
+    """Update current user's profile"""
+    if request.name is not None:
+        current_user.name = request.name
+    if request.phone is not None:
+        current_user.phone = request.phone
+    if request.department is not None:
+        current_user.department = request.department
+    
+    session.add(current_user)
+    await session.commit()
+    await session.refresh(current_user)
+    
+    return current_user

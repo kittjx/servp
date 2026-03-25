@@ -100,10 +100,22 @@
 					}
 
 					// 第二次点击：完成注册/登录
+					let avatarUrl = '';
+					
+					// 如果用户选择了头像，先上传
+					if (this.userInfo.avatarUrl && !this.userInfo.avatarUrl.includes('default-avatar')) {
+						try {
+							avatarUrl = await this.uploadAvatar(this.userInfo.avatarUrl);
+						} catch (err) {
+							console.error('Upload avatar error:', err);
+							// 上传失败不影响登录，继续使用默认头像
+						}
+					}
+
 					// 准备用户信息
 					const userInfoToSubmit = {
 						nickName: this.userInfo.nickname || 'User',
-						avatarUrl: this.userInfo.avatarUrl || '',
+						avatarUrl: avatarUrl || '',
 						gender: 0,
 						city: '',
 						province: '',
@@ -113,7 +125,7 @@
 
 					console.log('Submitting user info:', userInfoToSubmit);
 
-					// 发送到后端（使用 public 方法，因为登录不需要认证）
+					// 发送到后端
 					const response = await api.public('/api/v1/auth/wechat-login', {
 						code: this.loginCode,
 						user_info: userInfoToSubmit
@@ -134,7 +146,7 @@
 							icon: 'success'
 						});
 
-						// 延迟跳转到首页（tabBar页面）
+						// 延迟跳转到首页
 						setTimeout(() => {
 							uni.switchTab({
 								url: '/pages/home/home'
@@ -150,6 +162,21 @@
 				} finally {
 					this.loading = false;
 				}
+			},
+
+			async uploadAvatar(filePath) {
+				// 先获取临时token用于上传（或者使用public上传接口）
+				const uploadRes = await uni.uploadFile({
+					url: 'http://localhost:8000/api/v1/upload/avatar',
+					filePath: filePath,
+					name: 'file'
+				});
+
+				if (uploadRes.statusCode === 201) {
+					const data = JSON.parse(uploadRes.data);
+					return `http://localhost:8000${data.url}`;
+				}
+				throw new Error('Upload failed');
 			}
 		}
 	}

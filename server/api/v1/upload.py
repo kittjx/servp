@@ -109,3 +109,44 @@ async def upload_images(files: List[UploadFile] = File(...)):
     return {
         "urls": uploaded_urls
     }
+
+
+@upload_router.post("/avatar", status_code=status.HTTP_201_CREATED)
+async def upload_avatar(file: UploadFile = File(...)):
+    """
+    Upload avatar (public endpoint for login)
+    """
+    # 检查文件类型
+    if not allowed_file(file.filename):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File type not allowed. Only jpg, jpeg, png, gif, webp are allowed."
+        )
+    
+    # 读取文件内容
+    contents = await file.read()
+    
+    # 检查文件大小
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File too large. Maximum size is 10MB."
+        )
+    
+    # 生成文件名
+    ext = os.path.splitext(file.filename)[1]
+    filename = f"avatars/{datetime.now().strftime('%Y%m%d')}/{uuid.uuid4()}{ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    
+    # 创建目录
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    
+    # 保存文件
+    with open(filepath, "wb") as f:
+        f.write(contents)
+    
+    # 返回文件URL
+    return {
+        "url": f"/uploads/{filename}",
+        "filename": file.filename
+    }
