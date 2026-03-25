@@ -152,11 +152,11 @@
 						</button>
 						<!-- Leaders can assign orders -->
 						<button 
-							v-if="userInfo.is_leader && (order.status === 'pending' || !order.handler_id)"
+							v-if="userInfo.is_leader && order.status !== 'completed'"
 							class="assign-btn" 
 							@click.stop="showAssignModal(order)"
 						>
-							Assign
+							{{ order.handler_id ? 'Reassign' : 'Assign' }}
 						</button>
 						<button 
 							class="detail-btn" 
@@ -237,17 +237,30 @@ export default {
 		}
 	},
 	onLoad() {
-		this.userInfo = uni.getStorageSync('user_info') || {}
+		this.loadUserInfo()
 		this.loadOrders()
-		if (this.userInfo.is_leader) {
-			this.loadEngineers()
-		}
 	},
 	onShow() {
-		this.userInfo = uni.getStorageSync('user_info') || {}
+		this.loadUserInfo()
 		this.loadOrders()
 	},
 	methods: {
+		async loadUserInfo() {
+			try {
+				this.userInfo = await api.get('/api/v1/auth/me')
+				uni.setStorageSync('user_info', this.userInfo)
+				
+				// Load engineers if user is a leader
+				if (this.userInfo.is_leader) {
+					this.loadEngineers()
+				}
+			} catch (err) {
+				console.error('Load user info error:', err)
+				// Fallback to cached user info
+				this.userInfo = uni.getStorageSync('user_info') || {}
+			}
+		},
+
 		switchTab(index) {
 			this.activeTab = index
 		},

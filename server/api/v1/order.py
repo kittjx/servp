@@ -188,6 +188,8 @@ async def assign_order(
     session: DBSession
 ):
     """Assign order to an engineer (department leader only)"""
+    from sqlalchemy.orm import selectinload
+    
     order = await get_order_or_404(request.order_id, session)
     
     # Verify the new handler is in the same department
@@ -210,7 +212,6 @@ async def assign_order(
     order.handler_id = request.new_handler_id
     order.dispatch_method = DispatchMethod.MANUAL
     order.status = OrderStatus.PROCESSING
-    #order.updated_at = datetime.now(timezone.utc)
     
     # Add process record
     record = ProcessRecord(
@@ -222,7 +223,14 @@ async def assign_order(
     session.add(record)
     session.add(order)
     await session.commit()
-    await session.refresh(order)
+    
+    # Reload with relationships
+    stmt = select(Order).options(
+        selectinload(Order.reporter),
+        selectinload(Order.handler)
+    ).where(Order.id == order.id)
+    result = await session.execute(stmt)
+    order = result.scalar_one()
     
     return order
 
