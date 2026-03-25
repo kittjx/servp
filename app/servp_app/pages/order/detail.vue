@@ -273,21 +273,15 @@ export default {
 		},
 
 		showAssignModal() {
-			// Find current handler index
-			if (this.order.handler_id) {
-				this.selectedEngineerIndex = this.engineers.findIndex(e => e.id === this.order.handler_id)
-				this.selectedEngineerId = this.order.handler_id
-			} else {
-				this.selectedEngineerIndex = -1
-				this.selectedEngineerId = null
-			}
+			this.selectedEngineerId = this.order.handler_id || null
+			this.showEngineerList = false
 			this.showAssign = true
 		},
 
 		closeAssignModal() {
 			this.showAssign = false
 			this.selectedEngineerId = null
-			this.selectedEngineerIndex = -1
+			this.showEngineerList = false
 		},
 
 		onEngineerChange(e) {
@@ -297,7 +291,13 @@ export default {
 		},
 
 		async confirmAssign() {
-			if (!this.selectedEngineerId) return
+			if (!this.selectedEngineerId) {
+				uni.showToast({
+					title: 'Please select an engineer',
+					icon: 'none'
+				})
+				return
+			}
 
 			try {
 				await api.post('/api/v1/order/assign', {
@@ -313,9 +313,10 @@ export default {
 				this.closeAssignModal()
 				this.loadOrderDetail()
 			} catch (err) {
-				console.error('Assign order error:', err)
+				console.error('Error assigning engineer:', err)
+				const errorMsg = typeof err.message === 'string' ? err.message : 'Assign Failed'
 				uni.showToast({
-					title: err.message || 'Assign Failed',
+					title: errorMsg,
 					icon: 'none'
 				})
 			}
@@ -502,36 +503,10 @@ export default {
 		closeAssignModal() {
 			this.showAssign = false
 			this.selectedEngineerId = null
+			this.showEngineerList = false
 		},
 		selectEngineer(id) {
 			this.selectedEngineerId = id
-		},
-		async confirmAssign() {
-			if (!this.selectedEngineerId) {
-				uni.showToast({
-					title: 'Please select an engineer',
-					icon: 'none'
-				})
-				return
-			}
-			try {
-				await api.post('/api/v1/order/assign', {
-					order_id: this.order.id,
-					handler_id: this.selectedEngineerId
-				})
-				uni.showToast({
-					title: 'Engineer assigned successfully',
-					icon: 'success'
-				})
-				this.loadOrderDetail()
-				this.closeAssignModal()
-			} catch (error) {
-				console.error('Error assigning engineer:', error)
-				uni.showToast({
-					title: 'Failed to assign engineer',
-					icon: 'none'
-				})
-			}
 		}
 	}
 }

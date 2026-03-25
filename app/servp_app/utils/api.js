@@ -51,14 +51,28 @@ function request(url, options = {}) {
 			header: requestHeader,
 			success: (res) => {
 				if (res.statusCode === 401) {
-					console.error('Unauthorized:', res.data)
 					clearCacheAndLogin()
 					reject(new Error('Unauthorized'))
 					return
 				}
 
 				if (res.statusCode >= 400) {
-					const errorMessage = res.data?.detail || res.data?.message || 'Request failed'
+					let errorMessage = 'Request failed'
+					
+					if (res.data) {
+						if (typeof res.data === 'string') {
+							errorMessage = res.data
+						} else if (res.data.detail) {
+							if (Array.isArray(res.data.detail)) {
+								errorMessage = res.data.detail.map(e => e.msg).join(', ')
+							} else if (typeof res.data.detail === 'string') {
+								errorMessage = res.data.detail
+							}
+						} else if (res.data.message) {
+							errorMessage = res.data.message
+						}
+					}
+					
 					uni.showToast({
 						title: errorMessage,
 						icon: 'none',
@@ -71,7 +85,6 @@ function request(url, options = {}) {
 				resolve(res.data)
 			},
 			fail: (err) => {
-				console.error('Request failed:', err)
 				uni.showToast({
 					title: 'Network error',
 					icon: 'none',
