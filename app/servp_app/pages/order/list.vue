@@ -115,6 +115,7 @@
 				class="order-item" 
 				v-for="order in departmentOrders" 
 				:key="order.id"
+				@click="goToDetail(order.id)"
 			>
 				<view class="order-header">
 					<text class="order-id">{{ order.order_id }}</text>
@@ -126,45 +127,11 @@
 				<view class="order-content">
 					<text class="category">{{ order.category }}</text>
 					<text class="description">{{ order.description }}</text>
-					<view class="personnel-info">
-						<view class="person-item" v-if="order.reporter">
-							<text class="person-label">Reporter:</text>
-							<text class="person-name">{{ order.reporter.name || order.reporter.nickname || 'Unknown' }}</text>
-						</view>
-						<view class="person-item" v-if="order.handler">
-							<text class="person-label">Handler:</text>
-							<text class="person-name">{{ order.handler.name || order.handler.nickname || 'Unassigned' }}</text>
-						</view>
-					</view>
 				</view>
 
 				<view class="order-footer">
 					<text class="priority" :class="order.priority">{{ getPriorityText(order.priority) }}</text>
-					<view class="footer-actions">
-						<text class="time">{{ formatTime(order.created_at) }}</text>
-						<!-- Regular users can accept unassigned orders -->
-						<button 
-							v-if="!userInfo.is_leader && order.status === 'pending' && !order.handler_id"
-							class="assign-btn" 
-							@click.stop="acceptOrder(order)"
-						>
-							Accept
-						</button>
-						<!-- Leaders can assign orders -->
-						<button 
-							v-if="userInfo.is_leader && order.status !== 'completed'"
-							class="assign-btn" 
-							@click.stop="showAssignModal(order)"
-						>
-							{{ order.handler_id ? 'Reassign' : 'Assign' }}
-						</button>
-						<button 
-							class="detail-btn" 
-							@click.stop="goToDetail(order.id)"
-						>
-							Detail
-						</button>
-					</view>
+					<text class="time">{{ formatTime(order.created_at) }}</text>
 				</view>
 			</view>
 

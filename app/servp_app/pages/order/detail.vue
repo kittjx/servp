@@ -146,6 +146,62 @@
 						Add Process Record
 					</button>
 				</template>
+
+				<!-- 部门领导视角 - 可以分配/重新分配 -->
+				<template v-if="userInfo && userInfo.is_leader && order.status !== 'completed'">
+					<button 
+						class="btn btn-primary"
+						@click="showAssignModal"
+					>
+						{{ order.handler_id ? 'Reassign' : 'Assign' }}
+					</button>
+				</template>
+
+				<!-- 普通部门成员 - 可以接单 -->
+				<template v-if="userInfo && !userInfo.is_leader && order.status === 'pending' && !order.handler_id">
+					<button 
+						class="btn btn-primary"
+						@click="acceptOrder"
+					>
+						Accept Order
+					</button>
+				</template>
+			</view>
+
+			<!-- 分配工程师弹窗 -->
+			<view class="modal-mask" v-if="showAssign" @click="closeAssignModal">
+				<view class="modal-content" @click.stop>
+					<view class="modal-header">
+						<text class="modal-title">Assign Engineer</text>
+						<text class="modal-close" @click="closeAssignModal">✕</text>
+					</view>
+					<view class="modal-body">
+						<view class="order-info">
+							<text class="order-label">Order:</text>
+							<text class="order-text">{{ order?.order_id }}</text>
+						</view>
+						<view class="engineer-list">
+							<view 
+								class="engineer-item" 
+								v-for="engineer in engineers" 
+								:key="engineer.id"
+								:class="{ 'selected': selectedEngineerId === engineer.id }"
+								@click="selectEngineer(engineer.id)"
+							>
+								<image class="engineer-avatar" :src="getUserAvatar(engineer)"></image>
+								<view class="engineer-info">
+									<text class="engineer-name">{{ engineer.name || engineer.nickname }}</text>
+									<text class="engineer-dept">{{ engineer.department }}</text>
+								</view>
+								<text class="check-icon" v-if="selectedEngineerId === engineer.id">✓</text>
+							</view>
+						</view>
+					</view>
+					<view class="modal-footer">
+						<button class="modal-cancel" @click="closeAssignModal">Cancel</button>
+						<button class="modal-confirm" @click="confirmAssign" :disabled="!selectedEngineerId">Confirm</button>
+					</view>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -162,7 +218,10 @@ export default {
 			order: null,
 			processRecords: [],
 			loading: false,
-			userInfo: null
+			userInfo: null,
+			showAssign: false,
+			selectedEngineerId: null,
+			engineers: []
 		}
 	},
 	computed: {
@@ -180,10 +239,68 @@ export default {
 	},
 	onLoad(options) {
 		this.orderId = options.id
-		this.userInfo = uni.getStorageSync('user_info')
+		this.loadUserInfo()
 		this.loadOrderDetail()
 	},
 	methods: {
+		async loadUserInfo() {
+			try {
+				this.userInfo = await api.get('/api/v1/auth/me')
+				if (this.userInfo.is_leader) {
+					this.loadEngineers()
+				}
+			} catch (err) {
+				console.error('Load user info error:', err)
+				this.userInfo = uni.getStorageSync('user_info') || {}
+			}
+		},
+
+		async loadEngineers() {
+			try {
+				this.engineers = await api.get('/api/v1/order/department/engineers')
+			} catch (err) {
+				console.error('Load engineers error:', err)
+			}
+		},
+
+		showAssignModal() {
+			this.selectedEngineerId = this.order.handler_id || null
+			this.showAssign = true
+		},
+
+		closeAssignModal() {
+			this.showAssign = false
+			this.selectedEngineerId = null
+		},
+
+		selectEngineer(engineerId) {
+			this.selectedEngineerId = engineerId
+		},
+
+		async confirmAssign() {
+			if (!this.selectedEngineerId) return
+
+			try {
+				await api.post('/api/v1/order/assign', {
+					order_id: this.order.id,
+					new_handler_id: this.selectedEngineerId
+				})
+
+				uni.showToast({
+					title: 'Assigned Successfully',
+					icon: 'success'
+				})
+
+				this.closeAssignModal()
+				this.loadOrderDetail()
+			} catch (err) {
+				console.error('Assign order error:', err)
+				uni.showToast({
+					title: err.message || 'Assign Failed',
+					icon: 'none'
+				})
+			}
+		},
 		fixImageUrl(url) {
 			if (!url) return url
 			// Replace http://localhost:8000 with config base URL
@@ -358,6 +475,44 @@ export default {
 			if (!time) return ''
 			const date = new Date(time)
 			return date.toLocaleString()
+		},
+		showAssignModal() {
+			this.showAssign = true
+			this.loadEngineers()
+		},
+		closeAssignModal() {
+			this.showAssign = false
+			this.selectedEngineerId = null
+		},
+		selectEngineer(id) {
+			this.selectedEngineerId = id
+		},
+		async confirmAssign() {
+			if (!this.selectedEngineerId) {
+				uni.showToast({
+					title: 'Please select an engineer',
+					icon: 'none'
+				})
+				return
+			}
+			try {
+				await api.post('/api/v1/order/assign', {
+					order_id: this.order.id,
+					handler_id: this.selectedEngineerId
+				})
+				uni.showToast({
+					title: 'Engineer assigned successfully',
+					icon: 'success'
+				})
+				this.loadOrderDetail()
+				this.closeAssignModal()
+			} catch (error) {
+				console.error('Error assigning engineer:', error)
+				uni.showToast({
+					title: 'Failed to assign engineer',
+					icon: 'none'
+				})
+			}
 		}
 	}
 }
@@ -578,5 +733,128 @@ export default {
 .btn-secondary {
 	background: #f5f5f5;
 	color: #666;
+}
+
+.modal-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.modal-content {
+	background: #fff;
+	border-radius: 16rpx;
+	width: 80%;
+	max-width: 600rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 20rpx 30rpx;
+	border-bottom: 1rpx solid #e5e5e5;
+}
+
+.modal-title {
+	font-size: 32rpx;
+	font-weight: bold;
+}
+
+.modal-close {
+	font-size: 32rpx;
+	cursor: pointer;
+}
+
+.modal-body {
+	padding: 20rpx 30rpx;
+}
+
+.order-info {
+	display: flex;
+	align-items: center;
+	margin-bottom: 20rpx;
+}
+
+.order-label {
+	font-size: 28rpx;
+	font-weight: bold;
+	margin-right: 20rpx;
+}
+
+.order-text {
+	font-size: 28rpx;
+}
+
+.engineer-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 20rpx;
+}
+
+.engineer-item {
+	display: flex;
+	align-items: center;
+	background: #f5f5f5;
+	border-radius: 16rpx;
+	padding: 20rpx;
+	cursor: pointer;
+	transition: background 0.3s;
+}
+
+.engineer-item.selected {
+	background: #07c160;
+	color: #fff;
+}
+
+.engineer-avatar {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 50%;
+	margin-right: 20rpx;
+}
+
+.engineer-info {
+	flex: 1;
+}
+
+.engineer-name {
+	font-size: 28rpx;
+	font-weight: bold;
+}
+
+.engineer-dept {
+	font-size: 24rpx;
+	color: #666;
+}
+
+.check-icon {
+	font-size: 32rpx;
+	font-weight: bold;
+}
+
+.modal-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 20rpx 30rpx;
+	border-top: 1rpx solid #e5e5e5;
+}
+
+.modal-cancel {
+	background: #f5f5f5;
+	color: #666;
+}
+
+.modal-confirm {
+	background: #07c160;
+	color: #fff;
 }
 </style>
