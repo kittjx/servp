@@ -180,21 +180,22 @@
 							<text class="order-label">Order:</text>
 							<text class="order-text">{{ order?.order_id }}</text>
 						</view>
-						<view class="engineer-list">
-							<view 
-								class="engineer-item" 
-								v-for="engineer in engineers" 
-								:key="engineer.id"
-								:class="{ 'selected': selectedEngineerId === engineer.id }"
-								@click="selectEngineer(engineer.id)"
+						<view class="form-item">
+							<text class="label">Select Engineer</text>
+							<picker 
+								mode="selector" 
+								:range="engineers" 
+								range-key="name"
+								:value="selectedEngineerIndex"
+								@change="onEngineerChange"
 							>
-								<image class="engineer-avatar" :src="getUserAvatar(engineer)"></image>
-								<view class="engineer-info">
-									<text class="engineer-name">{{ engineer.name || engineer.nickname }}</text>
-									<text class="engineer-dept">{{ engineer.department }}</text>
+								<view class="picker-value">
+									<text :class="{ 'placeholder': selectedEngineerId === null }">
+										{{ selectedEngineerName || 'Please select an engineer' }}
+									</text>
+									<text class="arrow">›</text>
 								</view>
-								<text class="check-icon" v-if="selectedEngineerId === engineer.id">✓</text>
-							</view>
+							</picker>
 						</view>
 					</view>
 					<view class="modal-footer">
@@ -221,6 +222,7 @@ export default {
 			userInfo: null,
 			showAssign: false,
 			selectedEngineerId: null,
+			selectedEngineerIndex: -1,
 			engineers: []
 		}
 	},
@@ -235,6 +237,13 @@ export default {
 		displayMediaUrls() {
 			if (!this.order || !this.order.media_urls) return []
 			return this.order.media_urls.map(url => this.fixImageUrl(url))
+		},
+		selectedEngineerName() {
+			if (this.selectedEngineerIndex >= 0 && this.engineers[this.selectedEngineerIndex]) {
+				const engineer = this.engineers[this.selectedEngineerIndex]
+				return engineer.name || engineer.nickname
+			}
+			return ''
 		}
 	},
 	onLoad(options) {
@@ -264,17 +273,27 @@ export default {
 		},
 
 		showAssignModal() {
-			this.selectedEngineerId = this.order.handler_id || null
+			// Find current handler index
+			if (this.order.handler_id) {
+				this.selectedEngineerIndex = this.engineers.findIndex(e => e.id === this.order.handler_id)
+				this.selectedEngineerId = this.order.handler_id
+			} else {
+				this.selectedEngineerIndex = -1
+				this.selectedEngineerId = null
+			}
 			this.showAssign = true
 		},
 
 		closeAssignModal() {
 			this.showAssign = false
 			this.selectedEngineerId = null
+			this.selectedEngineerIndex = -1
 		},
 
-		selectEngineer(engineerId) {
-			this.selectedEngineerId = engineerId
+		onEngineerChange(e) {
+			const index = e.detail.value
+			this.selectedEngineerIndex = index
+			this.selectedEngineerId = this.engineers[index].id
 		},
 
 		async confirmAssign() {
@@ -774,70 +793,58 @@ export default {
 }
 
 .modal-body {
-	padding: 20rpx 30rpx;
+	padding: 30rpx;
 }
 
 .order-info {
 	display: flex;
 	align-items: center;
-	margin-bottom: 20rpx;
+	margin-bottom: 30rpx;
+	padding-bottom: 20rpx;
+	border-bottom: 1rpx solid #e5e5e5;
 }
 
 .order-label {
 	font-size: 28rpx;
-	font-weight: bold;
-	margin-right: 20rpx;
+	color: #666;
+	margin-right: 10rpx;
 }
 
 .order-text {
 	font-size: 28rpx;
+	color: #333;
+	font-weight: 500;
 }
 
-.engineer-list {
+.form-item {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 20rpx;
+	flex-direction: column;
+	gap: 15rpx;
 }
 
-.engineer-item {
-	display: flex;
-	align-items: center;
-	background: #f5f5f5;
-	border-radius: 16rpx;
-	padding: 20rpx;
-	cursor: pointer;
-	transition: background 0.3s;
-}
-
-.engineer-item.selected {
-	background: #07c160;
-	color: #fff;
-}
-
-.engineer-avatar {
-	width: 80rpx;
-	height: 80rpx;
-	border-radius: 50%;
-	margin-right: 20rpx;
-}
-
-.engineer-info {
-	flex: 1;
-}
-
-.engineer-name {
+.label {
 	font-size: 28rpx;
-	font-weight: bold;
+	color: #333;
+	font-weight: 500;
 }
 
-.engineer-dept {
-	font-size: 24rpx;
-	color: #666;
+.picker-value {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 20rpx;
+	background: #f5f5f5;
+	border-radius: 8rpx;
+	font-size: 28rpx;
 }
 
-.check-icon {
+.picker-value .placeholder {
+	color: #999;
+}
+
+.arrow {
 	font-size: 32rpx;
-	font-weight: bold;
+	color: #999;
 }
 
 .modal-footer {
