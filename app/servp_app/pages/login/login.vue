@@ -37,6 +37,7 @@
 
 <script>
 	import api from '../../utils/api.js'
+	import config from '../../config/config.js'
 
 	export default {
 		data() {
@@ -165,16 +166,15 @@
 			},
 
 			async uploadAvatar(filePath) {
-				// 先获取临时token用于上传（或者使用public上传接口）
 				const uploadRes = await uni.uploadFile({
-					url: 'http://localhost:8000/api/v1/upload/avatar',
+					url: `${config.API_BASE_URL}/api/v1/upload/avatar`,
 					filePath: filePath,
 					name: 'file'
 				});
 
 				if (uploadRes.statusCode === 201) {
 					const data = JSON.parse(uploadRes.data);
-					return `http://localhost:8000${data.url}`;
+					return `${config.API_BASE_URL}${data.url}`;
 				}
 				throw new Error('Upload failed');
 			}

@@ -32,11 +32,11 @@
 				</view>
 
 				<!-- 图片附件 -->
-				<view class="info-item" v-if="order.media_urls && order.media_urls.length > 0">
+				<view class="info-item" v-if="displayMediaUrls && displayMediaUrls.length > 0">
 					<text class="label">Attachments</text>
 					<view class="image-list">
 						<image 
-							v-for="(url, index) in order.media_urls" 
+							v-for="(url, index) in displayMediaUrls" 
 							:key="index"
 							:src="url" 
 							mode="aspectFill"
@@ -153,6 +153,7 @@
 
 <script>
 import api from '../../utils/api.js'
+import config from '../../config/config.js'
 
 export default {
 	data() {
@@ -170,6 +171,11 @@ export default {
 		},
 		isHandler() {
 			return this.userInfo && this.order && this.order.handler_id === this.userInfo.id
+		},
+		// Transform media URLs to use HTTPS
+		displayMediaUrls() {
+			if (!this.order || !this.order.media_urls) return []
+			return this.order.media_urls.map(url => this.fixImageUrl(url))
 		}
 	},
 	onLoad(options) {
@@ -178,6 +184,12 @@ export default {
 		this.loadOrderDetail()
 	},
 	methods: {
+		fixImageUrl(url) {
+			if (!url) return url
+			// Replace http://localhost:8000 with config base URL
+			return url.replace('http://localhost:8000', config.API_BASE_URL)
+		},
+		
 		getUserAvatar(user) {
 			if (!user || !user.avatar_url) {
 				return '/static/default-avatar.png'
@@ -185,8 +197,16 @@ export default {
 			if (user.avatar_url.includes('__tmp__') || user.avatar_url.startsWith('http://tmp')) {
 				return '/static/default-avatar.png'
 			}
-			return user.avatar_url
+			return this.fixImageUrl(user.avatar_url)
 		},
+		
+		previewImage(index) {
+			uni.previewImage({
+				urls: this.displayMediaUrls,
+				current: index
+			})
+		},
+		
 		async loadOrderDetail() {
 			this.loading = true
 			try {
@@ -308,13 +328,6 @@ export default {
 						})
 					}
 				}
-			})
-		},
-
-		previewImage(index) {
-			uni.previewImage({
-				urls: this.order.media_urls,
-				current: index
 			})
 		},
 

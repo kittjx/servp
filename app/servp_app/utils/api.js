@@ -1,5 +1,7 @@
 // 统一的 API 请求封装
-const API_BASE_URL = 'http://localhost:8000'
+import config from '../config/config.js'
+
+const API_BASE_URL = config.API_BASE_URL
 
 /**
  * 清除所有缓存并跳转到登录页面

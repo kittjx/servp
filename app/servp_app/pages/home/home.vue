@@ -87,6 +87,7 @@
 
 <script>
 import api from '../../utils/api.js'
+import config from '../../config/config.js'
 
 export default {
 	data() {
@@ -242,7 +243,7 @@ export default {
 			try {
 				const token = uni.getStorageSync('access_token')
 				const uploadRes = await uni.uploadFile({
-					url: 'http://localhost:8000/api/v1/upload/image',
+					url: `${config.API_BASE_URL}/api/v1/upload/image`,
 					filePath: filePath,
 					name: 'file',
 					header: {
@@ -252,7 +253,7 @@ export default {
 
 				if (uploadRes.statusCode === 201) {
 					const data = JSON.parse(uploadRes.data)
-					return `http://localhost:8000${data.url}`
+					return `${config.API_BASE_URL}${data.url}`
 				}
 				return null
 			} catch (err) {
