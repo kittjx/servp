@@ -65,7 +65,7 @@
 					<text class="label">Reporter</text>
 					<view class="user-info">
 						<image class="avatar" :src="getUserAvatar(order.reporter)"></image>
-						<text class="value">{{ order.reporter.nickname || order.reporter.name || 'Unknown' }}</text>
+						<text class="value">{{ order.reporter.name || order.reporter.nickname || 'Unknown' }}</text>
 					</view>
 				</view>
 
@@ -73,7 +73,7 @@
 					<text class="label">Handler</text>
 					<view class="user-info">
 						<image class="avatar" :src="getUserAvatar(order.handler)"></image>
-						<text class="value">{{ order.handler.nickname || order.handler.name || 'Unassigned' }}</text>
+						<text class="value">{{ order.handler.name || order.handler.nickname || 'Unassigned' }}</text>
 					</view>
 				</view>
 			</view>
