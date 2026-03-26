@@ -180,22 +180,21 @@
 							<text class="order-label">Order:</text>
 							<text class="order-text">{{ order?.order_id }}</text>
 						</view>
-						<view class="form-item">
-							<text class="label">Select Engineer</text>
-							<picker 
-								mode="selector" 
-								:range="engineers" 
-								range-key="name"
-								:value="selectedEngineerIndex"
-								@change="onEngineerChange"
+						<view class="engineer-list">
+							<view 
+								class="engineer-item" 
+								v-for="engineer in engineers" 
+								:key="engineer.id"
+								:class="{ 'selected': selectedEngineerId === engineer.id }"
+								@click="selectEngineer(engineer.id)"
 							>
-								<view class="picker-value">
-									<text :class="{ 'placeholder': selectedEngineerId === null }">
-										{{ selectedEngineerName || 'Please select an engineer' }}
-									</text>
-									<text class="arrow">›</text>
+								<image class="engineer-avatar" :src="getUserAvatar(engineer)"></image>
+								<view class="engineer-info">
+									<text class="engineer-name">{{ engineer.name || engineer.nickname }}</text>
+									<text class="engineer-dept">{{ engineer.department }}</text>
 								</view>
-							</picker>
+								<text class="check-icon" v-if="selectedEngineerId === engineer.id">✓</text>
+							</view>
 						</view>
 					</view>
 					<view class="modal-footer">
@@ -274,20 +273,16 @@ export default {
 
 		showAssignModal() {
 			this.selectedEngineerId = this.order.handler_id || null
-			this.showEngineerList = false
 			this.showAssign = true
 		},
 
 		closeAssignModal() {
 			this.showAssign = false
 			this.selectedEngineerId = null
-			this.showEngineerList = false
 		},
 
-		onEngineerChange(e) {
-			const index = e.detail.value
-			this.selectedEngineerIndex = index
-			this.selectedEngineerId = this.engineers[index].id
+		selectEngineer(engineerId) {
+			this.selectedEngineerId = engineerId
 		},
 
 		async confirmAssign() {
@@ -495,18 +490,6 @@ export default {
 			if (!time) return ''
 			const date = new Date(time)
 			return date.toLocaleString()
-		},
-		showAssignModal() {
-			this.showAssign = true
-			this.loadEngineers()
-		},
-		closeAssignModal() {
-			this.showAssign = false
-			this.selectedEngineerId = null
-			this.showEngineerList = false
-		},
-		selectEngineer(id) {
-			this.selectedEngineerId = id
 		}
 	}
 }
@@ -769,14 +752,16 @@ export default {
 
 .modal-body {
 	padding: 30rpx;
+	max-height: 600rpx;
+	overflow-y: auto;
 }
 
 .order-info {
 	display: flex;
 	align-items: center;
-	margin-bottom: 30rpx;
+	margin-bottom: 20rpx;
 	padding-bottom: 20rpx;
-	border-bottom: 1rpx solid #e5e5e5;
+	border-bottom: 1rpx solid #f5f5f5;
 }
 
 .order-label {
@@ -791,35 +776,55 @@ export default {
 	font-weight: 500;
 }
 
-.form-item {
+.engineer-list {
 	display: flex;
 	flex-direction: column;
 	gap: 15rpx;
 }
 
-.label {
-	font-size: 28rpx;
-	color: #333;
-	font-weight: 500;
-}
-
-.picker-value {
+.engineer-item {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
 	padding: 20rpx;
 	background: #f5f5f5;
-	border-radius: 8rpx;
+	border-radius: 12rpx;
+	border: 2rpx solid transparent;
+}
+
+.engineer-item.selected {
+	background: #e8f5e9;
+	border-color: #07c160;
+}
+
+.engineer-avatar {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 50%;
+	margin-right: 20rpx;
+}
+
+.engineer-info {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+.engineer-name {
 	font-size: 28rpx;
+	color: #333;
+	font-weight: 500;
+	margin-bottom: 5rpx;
 }
 
-.picker-value .placeholder {
+.engineer-dept {
+	font-size: 24rpx;
 	color: #999;
 }
 
-.arrow {
-	font-size: 32rpx;
-	color: #999;
+.check-icon {
+	font-size: 40rpx;
+	color: #07c160;
+	font-weight: bold;
 }
 
 .modal-footer {

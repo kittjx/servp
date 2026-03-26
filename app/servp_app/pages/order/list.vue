@@ -91,10 +91,6 @@
 				<view class="order-content">
 					<text class="category">{{ order.category }}</text>
 					<text class="description">{{ order.description }}</text>
-					<view class="reporter-info" v-if="order.reporter">
-						<text class="reporter-label">Reporter:</text>
-						<text class="reporter-name">{{ order.reporter.nickname || order.reporter.name || 'Unknown' }}</text>
-					</view>
 				</view>
 
 				<view class="order-footer">
