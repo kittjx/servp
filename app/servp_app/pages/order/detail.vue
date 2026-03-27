@@ -86,7 +86,10 @@
 					<view class="timeline-item" v-for="record in processRecords" :key="record.id">
 						<view class="timeline-dot"></view>
 						<view class="timeline-content">
-							<text class="timeline-action">{{ record.action }}</text>
+							<view class="timeline-header">
+								<text class="timeline-action">{{ record.action }}</text>
+								<text class="timeline-user" v-if="record.user">{{ record.user.name || record.user.nickname }}</text>
+							</view>
 							<text class="timeline-notes" v-if="record.notes">{{ record.notes }}</text>
 							<text class="timeline-time">{{ formatDateTime(record.created_at) }}</text>
 						</view>
@@ -648,11 +651,23 @@ export default {
 	flex-direction: column;
 }
 
+.timeline-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8rpx;
+}
+
 .timeline-action {
 	font-size: 28rpx;
 	color: #333;
 	font-weight: 500;
-	margin-bottom: 8rpx;
+}
+
+.timeline-user {
+	font-size: 24rpx;
+	color: #666;
+	font-weight: 500;
 }
 
 .timeline-notes {

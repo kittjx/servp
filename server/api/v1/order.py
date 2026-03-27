@@ -259,12 +259,24 @@ async def process_order(request: ProcessOrderRequest, current_user: CurrentUser,
     await session.refresh(order)
     return order
 
-@order_router.get("/process-records/{orderId}", response_model=List[ProcessRecord])
+class ProcessRecordResponse(SQLModel):
+    id: int
+    order_id: int
+    user_id: int
+    action: str
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    user: Optional[UserResponse] = None
+
+@order_router.get("/process-records/{orderId}", response_model=List[ProcessRecordResponse])
 async def get_process_records(orderId: int, session: DBSession):
+    from sqlalchemy.orm import selectinload
+    
     order = await get_order_or_404(orderId, session)
     
-    # Explicitly query process records instead of using lazy-loaded relationship
-    statement = select(ProcessRecord).where(ProcessRecord.order_id == order.id).order_by(ProcessRecord.created_at.desc())
+    statement = select(ProcessRecord).options(
+        selectinload(ProcessRecord.user)
+    ).where(ProcessRecord.order_id == order.id).order_by(ProcessRecord.created_at.desc())
     result = await session.execute(statement)
     records = result.scalars().all()
     
